@@ -1,5 +1,8 @@
 # Directory Content Analysis Tool
 
+[![PyPI version](https://badge.fury.io/py/print-project.svg)](https://badge.fury.io/py/print-project)
+[![Python 3.6+](https://img.shields.io/badge/python-3.6+-blue.svg)](https://www.python.org/downloads/)
+
 A comprehensive Python utility for analyzing and extracting the contents of source code files across a project directory structure, outputting them into a single organized document for easier review and analysis.
 
 ## Features
@@ -21,6 +24,8 @@ Install directly from PyPI - works on **any system** with Python:
 ```bash
 pip install print-project
 ```
+
+> **Latest Release**: v2.0.3 (October 2025) - [View on PyPI](https://pypi.org/project/print-project/)
 
 **✅ After installation, use from any directory:**
 ```bash

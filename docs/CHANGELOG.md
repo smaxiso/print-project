@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.3] - 2025-10-11
+
+### Added
+- **Professional Project Organization**: Complete reorganization into structured directories
+  - `config/` - Configuration files (config.ini)
+  - `docs/` - All documentation (CHANGELOG, CONTRIBUTING, INSTALL, PYPI_PUBLISHING)
+  - `scripts/` - Installation and release scripts  
+  - `archive/` - Legacy/backup files for reference
+- **Context-Sensitive Help System**: Dynamic help examples based on invocation method
+  - Shows Python examples when called as `python print_project.py`
+  - Shows CLI examples when called via package commands (`print-project`, `analyze-project`)
+- **Enhanced PyPI Publishing**: Full PyPI distribution with proper packaging
+  - Published to PyPI as `print-project` package
+  - Professional package metadata and descriptions
+  - Separate PyPI-optimized README (PYPI-README.md)
+- **Comprehensive Installation Methods**: Multiple installation options for different needs
+  - PyPI installation (recommended): `pip install print-project`
+  - One-line remote installation scripts (curl/PowerShell)
+  - Git clone with pip installation
+  - Direct usage without installation
+- **Professional Documentation**: Comprehensive guides and documentation
+  - Installation guide (INSTALL.md)
+  - PyPI publishing guide (PYPI_PUBLISHING.md) 
+  - Contributing guidelines (CONTRIBUTING.md)
+  - Detailed changelog maintenance
+
+### Changed
+- **Project Structure**: Moved from flat structure to organized directories
+- **Configuration Path**: Updated config.ini search to include `config/` subdirectory
+- **Documentation**: Updated all docs to prioritize PyPI installation method
+- **Package Metadata**: Enhanced pyproject.toml with comprehensive project information
+- **Release Process**: Automated release workflow with proper versioning
+
+### Enhanced  
+- **User Experience**: Context-aware help system improves usability
+- **Maintainability**: Organized structure makes project easier to maintain and contribute to
+- **Professional Presentation**: Package now meets professional Python project standards
+- **Installation Options**: Multiple methods cater to different user preferences and environments
+
+### Fixed
+- **Legacy File Cleanup**: Removed redundant files (old shell scripts, requirements.txt)
+- **Package Building**: Resolved packaging warnings and optimized build process
+- **Documentation Links**: Updated all internal links to reflect new file locations
+
+## [2.0.2] - 2025-10-11
+
 ### Added
 - **One-Line Installation**: Remote installation without cloning repository
   - `install.sh` - Universal Unix/Linux/macOS installer with curl
