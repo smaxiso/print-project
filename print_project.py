@@ -5,6 +5,9 @@ This script analyzes and extracts the contents of source code files across a pro
 outputting them into a single organized document for easier review and analysis.
 
 Usage:
+    print-project [options]
+    analyze-project [options]
+    python -m print_project [options]
     python print_project.py [options]
 
 Options:
@@ -25,36 +28,128 @@ Options:
     -h, --help                  Show this help message and exit
 
 Examples:
-    # Basic usage - tree uses same exclusions as file processing
-    python print_project.py
-
-    # Tree follows file processing exclusions
-    python print_project.py -s "tests,docs,build"
-
-    # Override tree exclusions specifically
-    python print_project.py -s "tests,docs" --tree-exclude ".git,venv"
-
-    # Skip tree entirely
-    python print_project.py --no-tree
-
-    # Scan specific directory with console output
-    python print_project.py -f /path/to/project --console
-
-    # Include only Python and JavaScript files (tree shows same structure)
-    python print_project.py -e py,js,ts
-
-    # Force include specific config files while doing normal scanning
-    python print_project.py --include-files "config.local.properties,secret.env,.env.production"
-
-    # Process ONLY specific files
-    python print_project.py --only-include-files "main.py,config.py,README.md"
-
-    # Skip test directories and include specific files
-    python print_project.py -s tests,test --include-files "important-test.py"
-
-    # Custom output with timestamp
-    python print_project.py -o my_analysis --duplicate --console
+    print-project
+    print-project -s "tests,docs,build"
+    print-project -f /path/to/project --console
+    print-project --no-tree
+    print-project --include-files "config.local.properties,secret.env,.env.production"
+    print-project --only-include-files "main.py,config.py,README.md"
+    print-project -o my_analysis --duplicate --console
 """
+
+# Entry point for pip installable command-line tool
+def main():
+    return _main()
+
+# Rename the original main() to _main()
+def _main():
+    args = parse_arguments()
+    config = load_config()  # This now loads trusted extensions into global variable
+    options = merge_options(args, config)
+
+    # Validate include options (they're mutually exclusive)
+    if options['include_files'] and options['only_include_files']:
+        print("Error: --include-files and --only-include-files cannot be used together")
+        print("  --include-files: Force include specific files while scanning others normally")
+        print("  --only-include-files: Process ONLY the specified files, ignore everything else")
+        return 1
+
+    # Get and validate the root directory
+    root_dir = os.path.abspath(args.folder)
+    if not os.path.isdir(root_dir):
+        print(f"Error: '{root_dir}' is not a valid directory")
+        return 1
+
+    # Process files
+    print(f"Analyzing directory: {root_dir}")
+
+    # Show processing mode
+    if options['only_include_files']:
+        print(f"Mode: ONLY processing {len(options['only_include_files'])} specific files")
+        print(f"Files: {', '.join(options['only_include_files'])}")
+    elif options['include_files']:
+        print(f"Mode: Normal scanning + force including {len(options['include_files'])} specific files")
+        print(f"Force included: {', '.join(options['include_files'])}")
+    else:
+        print("Mode: Normal scanning with configured filters")
+
+    # Show tree mode
+    if options['no_tree']:
+        print("Tree generation: Disabled")
+    else:
+        tree_exclusions = determine_tree_exclusions(options)
+        tree_source = "explicit tree config" if options.get('tree_exclude_explicit', False) else "file processing config"
+        print(f"Tree generation: Enabled")
+        print(f"Tree exclusions: {', '.join(tree_exclusions) if tree_exclusions else 'None'} (from {tree_source})")
+
+    print("Starting analysis...")
+
+    output_content, summary_content, summary = process_files(root_dir, options)
+
+    # Determine the output file path
+    current_dir = os.getcwd()  # Output file always goes to current directory
+    output_dir = "output"
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    project_name = os.path.basename(root_dir)
+
+    if options['output']:
+        # Use custom filename if provided
+        base_name = options['output']
+    else:
+        # Use project name by default
+        base_name = f"{project_name}_project"
+
+    if options['duplicate']:
+        # Create duplicate with timestamp if requested
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"{base_name}_{timestamp}.txt"
+    else:
+        # Default behavior is to overwrite
+        output_filename = f"{base_name}.txt"
+
+    output_path = os.path.join(current_dir, output_dir, output_filename)
+
+    # Combine content and summary based on options
+    final_content = output_content.copy()
+    if not options['no_summary']:
+        final_content.extend(summary_content)
+
+    # Write output to file
+    with open(output_path, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(final_content))
+
+    output_size = os.path.getsize(output_path)
+
+    # Always show detailed summary in console, regardless of console option
+    print("\nAnalysis complete!")
+    print(f"Processed {summary['processed_files']} of {summary['total_files']} files")
+    print(f"Total code lines processed: {summary['total_lines']:,}")
+
+    if summary['force_included_files']:
+        print(f"Force-included files: {len(summary['force_included_files'])}")
+        for file_path in summary['force_included_files']:
+            line_count = summary['lines_per_file'].get(file_path, 0)
+            print(f"  ✓ {file_path} ({line_count:,} lines)")
+
+    print(f"Files skipped: {sum(len(files) for files in summary['skipped_files'].values())}")
+
+    if summary['skipped_dirs']:
+        print(f"Directories skipped: {len(summary['skipped_dirs'])}")
+        print("\nSkipped directories:")
+        for dir_path in summary['skipped_dirs']:
+            print(f"  - {dir_path}")
+
+    if summary['skipped_files']:
+        print("\nSkip reasons:")
+        for reason, files in summary['skipped_files'].items():
+            print(f"  - {reason}: {len(files)}")
+
+    print(f"\nTree exclusions: {', '.join(summary['tree_exclusions'])} (from {summary['tree_exclusion_source']})")
+    print(f"Execution time: {summary['execution_time']:.2f} seconds")
+    print(f"Output file: {output_path} ({get_human_readable_size(output_size)})")
+
+    return 0
 
 import argparse
 import configparser
@@ -577,6 +672,21 @@ def process_files(root_dir, options):
     }
 
 
+def get_command_prefix():
+    """
+    Determine the appropriate command prefix based on how the script was invoked.
+    
+    Returns:
+        str: Either 'python print_project.py' or 'print-project'
+    """
+    import sys
+    # Check if script was called directly with python
+    if sys.argv[0].endswith('print_project.py') or 'print_project.py' in sys.argv[0]:
+        return 'python print_project.py'
+    else:
+        # Called as installed CLI tool
+        return 'print-project'
+
 def parse_arguments():
     """
     Parse command line arguments with updated include options and tree functionality.
@@ -584,36 +694,41 @@ def parse_arguments():
     Returns:
         argparse.Namespace: The parsed arguments
     """
+    cmd = get_command_prefix()
+    
     parser = argparse.ArgumentParser(
         description='Directory Content Analysis Tool with Tree Structure',
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
+        epilog=f"""
 Examples:
   Basic usage - tree uses same exclusions as file processing:
-    python print_project.py
-    python print_project.py -f /path/to/project --console
+    {cmd}
+    {cmd} -f /path/to/project --console
 
   Tree follows file processing exclusions:
-    python print_project.py -s "tests,docs,build"
+    {cmd} -s "tests,docs,build"
 
   Override tree exclusions specifically:
-    python print_project.py -s "tests,docs" --tree-exclude ".git,venv"
+    {cmd} -s "tests,docs" --tree-exclude ".git,venv"
 
   Skip tree entirely:
-    python print_project.py --no-tree
+    {cmd} --no-tree
 
   File filtering (tree follows same logic):
-    python print_project.py -e py,js,ts
-    python print_project.py -x log,tmp,bak
-    python print_project.py -s tests,build,node_modules
+    {cmd} -e py,js,ts
+    {cmd} -x log,tmp,bak
+    {cmd} -s tests,build,node_modules
 
   Include options:
-    python print_project.py --include-files "config.local.py,secret.env"
-    python print_project.py --only-include-files "main.py,README.md"
+    {cmd} --include-files "config.local.py,secret.env"
+    {cmd} --only-include-files "main.py,README.md"
     
   Combined usage:
-    python print_project.py -s tests --include-files "important-test.py" --console
-    python print_project.py -e py --tree-exclude "venv,.git" --console
+    {cmd} -s tests --include-files "important-test.py" --console
+    {cmd} -e py --tree-exclude "venv,.git" --console
+
+  Alternative command:
+    analyze-project --help
         """
     )
 
@@ -673,9 +788,40 @@ def get_script_directory():
     return os.path.dirname(os.path.abspath(__file__))
 
 
+def find_config_file():
+    """
+    Find the config.ini file in multiple possible locations.
+    
+    Returns:
+        str: Path to config.ini file or None if not found
+    """
+    # Try multiple locations in order of preference
+    search_paths = [
+        # 1. Current working directory
+        os.path.join(os.getcwd(), 'config.ini'),
+        # 2. Script directory (for development/local install)
+        os.path.join(get_script_directory(), 'config.ini'),
+        # 3. Script directory config subdirectory (new organized structure)
+        os.path.join(get_script_directory(), 'config', 'config.ini'),
+        # 4. User home directory
+        os.path.join(os.path.expanduser('~'), '.print-project', 'config.ini'),
+        # 5. System config directory (Unix-like)
+        '/etc/print-project/config.ini',
+        # 6. Windows AppData
+        os.path.join(os.environ.get('APPDATA', ''), 'print-project', 'config.ini') if os.name == 'nt' else None
+    ]
+    
+    for path in search_paths:
+        if path and os.path.exists(path):
+            return path
+    
+    return None
+
+
 def load_config():
     """
-    Load configuration from a config file located in the script directory.
+    Load configuration from a config file.
+    Searches multiple locations for config.ini file.
     Now includes trusted_extensions configuration.
 
     Returns:
@@ -684,8 +830,7 @@ def load_config():
     global TRUSTED_EXTENSIONS
     
     config = configparser.ConfigParser()
-    script_dir = get_script_directory()
-    config_path = os.path.join(script_dir, 'config.ini')
+    config_path = find_config_file()
 
     # Default trusted extensions (fallback if not in config)
     default_trusted_extensions = [
@@ -714,8 +859,9 @@ def load_config():
         'no_tree': 'False'
     }
 
-    if os.path.exists(config_path):
+    if config_path and os.path.exists(config_path):
         config.read(config_path)
+        print(f"Using config file: {config_path}")
         if 'DEFAULT' in config:
             config_dict = {
                 'skip_folders': config['DEFAULT'].get('skip_folders', defaults['skip_folders']),
@@ -734,6 +880,11 @@ def load_config():
         else:
             config_dict = defaults
     else:
+        # No config file found, use defaults
+        if config_path is None:
+            print("No config file found in standard locations, using built-in defaults")
+        else:
+            print(f"Config file not found: {config_path}, using built-in defaults")
         config_dict = defaults
 
     # Process trusted extensions and set global variable
@@ -807,115 +958,7 @@ def merge_options(args, config):
     return options
 
 
-def main():
-    """Main function to run the script."""
-    args = parse_arguments()
-    config = load_config()  # This now loads trusted extensions into global variable
-    options = merge_options(args, config)
 
-    # Validate include options (they're mutually exclusive)
-    if options['include_files'] and options['only_include_files']:
-        print("Error: --include-files and --only-include-files cannot be used together")
-        print("  --include-files: Force include specific files while scanning others normally")
-        print("  --only-include-files: Process ONLY the specified files, ignore everything else")
-        return 1
-
-    # Get and validate the root directory
-    root_dir = os.path.abspath(args.folder)
-    if not os.path.isdir(root_dir):
-        print(f"Error: '{root_dir}' is not a valid directory")
-        return 1
-
-    # Process files
-    print(f"Analyzing directory: {root_dir}")
-
-    # Show processing mode
-    if options['only_include_files']:
-        print(f"Mode: ONLY processing {len(options['only_include_files'])} specific files")
-        print(f"Files: {', '.join(options['only_include_files'])}")
-    elif options['include_files']:
-        print(f"Mode: Normal scanning + force including {len(options['include_files'])} specific files")
-        print(f"Force included: {', '.join(options['include_files'])}")
-    else:
-        print("Mode: Normal scanning with configured filters")
-
-    # Show tree mode
-    if options['no_tree']:
-        print("Tree generation: Disabled")
-    else:
-        tree_exclusions = determine_tree_exclusions(options)
-        tree_source = "explicit tree config" if options.get('tree_exclude_explicit', False) else "file processing config"
-        print(f"Tree generation: Enabled")
-        print(f"Tree exclusions: {', '.join(tree_exclusions) if tree_exclusions else 'None'} (from {tree_source})")
-
-    print("Starting analysis...")
-
-    output_content, summary_content, summary = process_files(root_dir, options)
-
-    # Determine the output file path
-    current_dir = os.getcwd()  # Output file always goes to current directory
-    output_dir = "output"
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    project_name = os.path.basename(root_dir)
-
-    if options['output']:
-        # Use custom filename if provided
-        base_name = options['output']
-    else:
-        # Use project name by default
-        base_name = f"{project_name}_project"
-
-    if options['duplicate']:
-        # Create duplicate with timestamp if requested
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_filename = f"{base_name}_{timestamp}.txt"
-    else:
-        # Default behavior is to overwrite
-        output_filename = f"{base_name}.txt"
-
-    output_path = os.path.join(current_dir, output_dir, output_filename)
-
-    # Combine content and summary based on options
-    final_content = output_content.copy()
-    if not options['no_summary']:
-        final_content.extend(summary_content)
-
-    # Write output to file
-    with open(output_path, 'w', encoding='utf-8') as f:
-        f.write('\n'.join(final_content))
-
-    output_size = os.path.getsize(output_path)
-
-    # Always show detailed summary in console, regardless of console option
-    print("\nAnalysis complete!")
-    print(f"Processed {summary['processed_files']} of {summary['total_files']} files")
-    print(f"Total code lines processed: {summary['total_lines']:,}")
-
-    if summary['force_included_files']:
-        print(f"Force-included files: {len(summary['force_included_files'])}")
-        for file_path in summary['force_included_files']:
-            line_count = summary['lines_per_file'].get(file_path, 0)
-            print(f"  ✓ {file_path} ({line_count:,} lines)")
-
-    print(f"Files skipped: {sum(len(files) for files in summary['skipped_files'].values())}")
-
-    if summary['skipped_dirs']:
-        print(f"Directories skipped: {len(summary['skipped_dirs'])}")
-        print("\nSkipped directories:")
-        for dir_path in summary['skipped_dirs']:
-            print(f"  - {dir_path}")
-
-    if summary['skipped_files']:
-        print("\nSkip reasons:")
-        for reason, files in summary['skipped_files'].items():
-            print(f"  - {reason}: {len(files)}")
-
-    print(f"\nTree exclusions: {', '.join(summary['tree_exclusions'])} (from {summary['tree_exclusion_source']})")
-    print(f"Execution time: {summary['execution_time']:.2f} seconds")
-    print(f"Output file: {output_path} ({get_human_readable_size(output_size)})")
-
-    return 0
 
 
 if __name__ == "__main__":
@@ -928,39 +971,39 @@ if __name__ == "__main__":
 ### **Basic Usage with Tree Structure**
 ```bash
 # Scan current directory with tree structure (tree uses same exclusions as file processing)
-python print_project.py
+print-project
 
 # Scan specific directory with console output
-python print_project.py -f /path/to/project --console
+print-project -f /path/to/project --console
 
 # Skip common directories - both file processing AND tree will exclude them
-python print_project.py -s "tests,docs,build,node_modules"
+print-project -s "tests,docs,build,node_modules"
 ```
 
 ### **Tree Customization**
 ```bash
 # Skip tree generation entirely
-python print_project.py --no-tree
+print-project --no-tree
 
 # Tree uses different exclusions than file processing
-python print_project.py -s "tests,docs" --tree-exclude ".git,venv,__pycache__"
+print-project -s "tests,docs" --tree-exclude ".git,venv,__pycache__"
 # Files: excludes tests,docs directories
 # Tree: excludes .git,venv,__pycache__ directories
 
 # Show full project structure but process limited files
-python print_project.py -s "tests,build,docs,logs,temp" --tree-exclude ".git,node_modules"
+print-project -s "tests,build,docs,logs,temp" --tree-exclude ".git,node_modules"
 # Tree shows more structure, file processing is more selective
 ```
 
 ### **File Extension Filtering (Tree Shows All)**
 ```bash
 # Only Python and JavaScript files (tree shows all directories)
-python print_project.py -e py,js,ts,jsx
+print-project -e py,js,ts,jsx
 # Files: only .py, .js, .ts, .jsx files processed
 # Tree: shows complete directory structure
 
 # Exclude log and temporary files
-python print_project.py -x log,tmp,bak,cache
+print-project -x log,tmp,bak,cache
 # Files: excludes these extensions
 # Tree: shows all directories
 ```
@@ -968,10 +1011,10 @@ python print_project.py -x log,tmp,bak,cache
 ### **Force Include Scenarios**
 ```bash
 # Include important config files that might be skipped
-python print_project.py --include-files "config.local.properties,.env.production,secret.yaml"
+print-project --include-files "config.local.properties,.env.production,secret.yaml"
 
 # Include specific test files while skipping test directories
-python print_project.py -s tests,test --include-files "critical-test.py,integration-test.js"
+print-project -s tests,test --include-files "critical-test.py,integration-test.js"
 # File processing: skips test directories but includes specific test files
 # Tree: also excludes test directories from structure
 

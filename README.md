@@ -14,57 +14,143 @@ A comprehensive Python utility for analyzing and extracting the contents of sour
 
 ## Installation
 
-No special installation required. Just ensure you have Python 3.6+ installed.
+### 🚀 Option 1: PyPI Installation (Recommended)
+
+Install directly from PyPI - works on **any system** with Python:
+
+```bash
+pip install print-project
+```
+
+**✅ After installation, use from any directory:**
+```bash
+print-project --help                    # Main command
+analyze-project /path/to/project        # Alternative command
+print-project --console -f ~/myproject  # Example usage
+```
+
+### 📦 Option 2: One-Line Installation Scripts
+
+Install without cloning - alternative method for any system:
+
+**Unix/Linux/macOS:**
+```bash
+curl -sSL https://raw.githubusercontent.com/smaxiso/print-project/master/scripts/install.sh | bash
+```
+
+**Windows (PowerShell):**
+```powershell
+iwr -useb https://raw.githubusercontent.com/smaxiso/print-project/master/scripts/install.ps1 | iex
+```### 🔧 Option 3: Development Installation  
+
+For development or latest features from source:
+
+```bash
+# Clone the repository
+git clone https://github.com/smaxiso/print-project.git
+cd print-project
+
+# Install as Python package (creates 'print-project' and 'analyze-project' commands)
+pip install -e .
+```
+
+### 🎯 Option 4: Guided Installation Script
+
+For interactive setup with multiple installation options:
 
 ```bash
 git clone https://github.com/smaxiso/print-project.git
 cd print-project
+python scripts/install.py
+# Provides guided installation with choices for different setups
 ```
+
+### 📁 Option 5: Direct Usage (No Installation)
+
+Run directly without any installation:
+
+```bash
+git clone https://github.com/smaxiso/print-project.git
+cd print-project
+python print_project.py --help          # Works immediately
+python print_project.py --console       # Example usage
+```
+
+### 📋 Requirements
+
+- **Python 3.6+** (required)
+- **chardet library** (automatically installed with pip methods)
+
+### ✅ Verification
+
+After installation, test that everything works:
+
+```bash
+# Test CLI commands (after pip install):
+print-project --help
+analyze-project --help
+
+# Test basic functionality:
+print-project --console --only-include-files "README.md"
+
+# Test Python script (development):
+python print_project.py --help
+```
+
+### 🔧 Cross-Platform Compatibility
+
+This tool works identically on:
+- ✅ **Windows** (tested)
+- ✅ **macOS** (clone and `pip install -e .`)  
+- ✅ **Linux** (clone and `pip install -e .`)
+
+### 📂 Config File Search Locations
+
+The tool automatically searches for `config.ini` in:
+1. Current working directory
+2. Script directory (for development)
+3. Script directory `config/` subdirectory (organized structure)
+4. `~/.print-project/config.ini` (user config)
+5. `/etc/print-project/config.ini` (system config - Unix/Linux)
+6. `%APPDATA%/print-project/config.ini` (system config - Windows)
 
 ## Usage
 
 ### Basic Usage
 
 ```bash
-# Analyze current directory
+# CLI commands (after pip install or local install):
+print-project                    # Analyze current directory
+print-project -f /path/to/project # Analyze specific directory
+print-project --console          # Show console output during processing
+
+# Alternative command name:
+analyze-project --help
+
+# Direct Python script usage:
 python print_project.py
-
-# Analyze specific directory
 python print_project.py -f /path/to/project
-
-# Show console output during processing
 python print_project.py --console
 ```
 
 ### Advanced Options
 
 ```bash
-# Skip specific directories
+# CLI commands:
+print-project -s "tests,docs,build"              # Skip specific directories
+print-project -e py,js,ts                        # Include only specific file extensions
+print-project -x txt,log,tmp                     # Exclude specific file extensions
+print-project --include-files "config.local.properties,.env.production"  # Force include specific files
+print-project --only-include-files "main.py,config.py,README.md"          # Process only specific files
+print-project -o my_project_analysis             # Custom output filename
+print-project --duplicate                        # Create timestamped output
+print-project --no-tree                          # Skip directory tree generation
+print-project --tree-exclude ".git,venv,node_modules"  # Custom tree exclusions
+
+# Python script usage:
 python print_project.py -s "tests,docs,build"
-
-# Include only specific file extensions
 python print_project.py -e py,js,ts
-
-# Exclude specific file extensions
-python print_project.py -x txt,log,tmp
-
-# Force include specific files
-python print_project.py --include-files "config.local.properties,.env.production"
-
-# Process only specific files
-python print_project.py --only-include-files "main.py,config.py,README.md"
-
-# Custom output filename
-python print_project.py -o my_project_analysis
-
-# Create timestamped output (don't overwrite existing)
-python print_project.py --duplicate
-
-# Skip directory tree generation
-python print_project.py --no-tree
-
-# Custom tree exclusions (different from file processing)
-python print_project.py --tree-exclude ".git,venv,node_modules"
+# (Same options available)
 ```
 
 ## Command Line Options
@@ -111,16 +197,26 @@ The tool generates a `.txt` file containing:
    - Files skipped (with reasons)
    - Processing time and performance metrics
 
-## Files
+## Project Structure
 
-- `print_project.py` - Main application (current version)
-- `config.ini` - Configuration file with default settings
-- `VERSION` - Current version number
-- `CHANGELOG.md` - Version history and release notes
-- `CONTRIBUTING.md` - Guidelines for contributors
-- `archive/` - Archived versions and backup files
-  - `print_project_bkp.py` - Previous version (v1.0.0)
-  - `README.md` - Archive documentation
+```
+print-project/
+├── print_project.py           # Main application
+├── config/
+│   └── config.ini            # Default configuration
+├── scripts/
+│   ├── install.sh            # Unix/Linux installer
+│   ├── install.ps1           # Windows installer
+│   ├── install.py            # Interactive installer
+│   └── release.sh            # Release automation
+├── docs/
+│   ├── CHANGELOG.md          # Version history
+│   ├── CONTRIBUTING.md       # Development guidelines
+│   ├── INSTALL.md            # Installation guide
+│   └── PYPI_PUBLISHING.md    # Publishing guide
+├── archive/                  # Previous versions
+└── README.md                 # This file
+```
 
 ## Use Cases
 
@@ -132,14 +228,14 @@ The tool generates a `.txt` file containing:
 
 ## Contributing
 
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines on:
+We welcome contributions! Please see [CONTRIBUTING.md](https://github.com/smaxiso/print-project/blob/master/docs/CONTRIBUTING.md) for detailed guidelines on:
 
 - Setting up the development environment
 - Code style and testing requirements
 - Submitting bug reports and feature requests
 - Pull request process and release guidelines
 
-For version history and recent changes, see [CHANGELOG.md](CHANGELOG.md).
+For version history and recent changes, see [CHANGELOG.md](https://github.com/smaxiso/print-project/blob/master/docs/CHANGELOG.md).
 
 ## License
 

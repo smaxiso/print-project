@@ -7,10 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **One-Line Installation**: Remote installation without cloning repository
+  - `install.sh` - Universal Unix/Linux/macOS installer with curl
+  - `install.ps1` - Windows PowerShell installer  
+  - Automatic dependency checking and PATH configuration
+  - Smart fallback to manual installation if pip fails
+  - Usage: `curl -sSL https://raw.githubusercontent.com/.../install.sh | bash`
+- **Universal Command-line Installation**: Tool can now be installed as a system-wide command on any OS
+  - `pyproject.toml` for Python package installation with entry points
+  - `pip install -e .` creates `print-project` and `analyze-project` commands
+  - `install.py` script for guided installation with multiple options
+  - Shell script (`print-project`) and batch file (`print-project.bat`) wrappers for manual PATH setup
+  - Cross-platform compatibility (Windows, macOS, Linux)
+- **Multiple Usage Methods**: Four different ways to use the tool
+  - Direct Python execution: `python print_project.py`
+  - Pip-installed commands: `print-project` and `analyze-project`
+  - Manual PATH setup with wrapper scripts
+  - Future PyPI distribution ready
+- **Enhanced Configuration**: Config file search in multiple standard locations
+  - Current directory, script directory, user home, system directories
+  - Fallback to built-in defaults when no config found
+  - Config file location reporting and cross-platform paths
+
+### Changed
+- **Installation Methods**: Four comprehensive installation options for different use cases
+- **Entry Point Architecture**: Proper main()/\_main() function structure for pip installation
+- **Configuration Loading**: Improved config file discovery and error handling across platforms
+- **Usage Documentation**: Updated README with comprehensive, tested installation guide
+- **Cross-Platform Design**: Ensures identical functionality on Windows, macOS, and Linux
+
+### Fixed
+- **Duplicate Function Removal**: Cleaned up duplicate main() functions
+- **Entry Point Compatibility**: Fixed command-line entry points for universal installation
+- **Documentation Consistency**: Aligned all documentation with tested installation methods
+
 ### Project Structure
 - Reorganized project structure by moving backup files to `archive/` directory
 - Added comprehensive CHANGELOG.md
 - Added archive documentation
+- Added installation and packaging files
 
 ## [2.0.0] - 2025-10-11
 
