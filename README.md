@@ -114,8 +114,13 @@ The tool generates a `.txt` file containing:
 ## Files
 
 - `print_project.py` - Main application (current version)
-- `print_project_bkp.py` - Backup version with previous feature set
 - `config.ini` - Configuration file with default settings
+- `VERSION` - Current version number
+- `CHANGELOG.md` - Version history and release notes
+- `CONTRIBUTING.md` - Guidelines for contributors
+- `archive/` - Archived versions and backup files
+  - `print_project_bkp.py` - Previous version (v1.0.0)
+  - `README.md` - Archive documentation
 
 ## Use Cases
 
@@ -127,7 +132,14 @@ The tool generates a `.txt` file containing:
 
 ## Contributing
 
-Feel free to submit issues, feature requests, or pull requests to improve the tool.
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines on:
+
+- Setting up the development environment
+- Code style and testing requirements
+- Submitting bug reports and feature requests
+- Pull request process and release guidelines
+
+For version history and recent changes, see [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
