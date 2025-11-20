@@ -21,7 +21,9 @@ Options:
     --max-size SIZE             Maximum file size in bytes to process
     --console                   Show console output (off by default)
     -o, --output FILENAME       Output filename (without extension)
-    --duplicate                 Create duplicate output file with timestamp instead of overwriting
+    --output-dir DIR            Output directory (default: print_project_outputs)
+    --overwrite                 Overwrite existing file instead of creating new timestamped file
+    --duplicate                 [DEPRECATED] Same as default behavior (timestamped files)
     --no-summary                Exclude summary from output file
     --no-tree                   Skip directory tree generation
     --tree-exclude DIRS         Override: Comma-separated list of directories to exclude from tree (if not specified, uses --skip)
@@ -29,13 +31,28 @@ Options:
 
 Examples:
     print-project
+    print-project --output-dir my_outputs
+    print-project --overwrite
     print-project -s "tests,docs,build"
     print-project -f /path/to/project --console
     print-project --no-tree
     print-project --include-files "config.local.properties,secret.env,.env.production"
     print-project --only-include-files "main.py,config.py,README.md"
-    print-project -o my_analysis --duplicate --console
+    print-project -o my_analysis --overwrite --console
 """
+
+import argparse
+import configparser
+import datetime
+import os
+import sys
+import time
+import chardet
+from pathlib import Path
+
+
+# Global variable to store trusted extensions loaded from config
+TRUSTED_EXTENSIONS = set()
 
 # Entry point for pip installable command-line tool
 def main():
@@ -88,7 +105,11 @@ def _main():
 
     # Determine the output file path
     current_dir = os.getcwd()  # Output file always goes to current directory
-    output_dir = "output"
+    
+    # Use configured output directory or default
+    output_dir_name = options['output_dir'] if options['output_dir'] else "print_project_outputs"
+    output_dir = os.path.join(current_dir, output_dir_name)
+    
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     project_name = os.path.basename(root_dir)
@@ -100,15 +121,16 @@ def _main():
         # Use project name by default
         base_name = f"{project_name}_project"
 
-    if options['duplicate']:
-        # Create duplicate with timestamp if requested
+    # Determine final filename
+    if options['overwrite']:
+        # Overwrite mode: use base name directly
+        output_filename = f"{base_name}.txt"
+    else:
+        # Default mode: append timestamp
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         output_filename = f"{base_name}_{timestamp}.txt"
-    else:
-        # Default behavior is to overwrite
-        output_filename = f"{base_name}.txt"
 
-    output_path = os.path.join(current_dir, output_dir, output_filename)
+    output_path = os.path.join(output_dir, output_filename)
 
     # Combine content and summary based on options
     final_content = output_content.copy()
@@ -150,19 +172,6 @@ def _main():
     print(f"Output file: {output_path} ({get_human_readable_size(output_size)})")
 
     return 0
-
-import argparse
-import configparser
-import datetime
-import os
-import sys
-import time
-import chardet
-from pathlib import Path
-
-
-# Global variable to store trusted extensions loaded from config
-TRUSTED_EXTENSIONS = set()
 
 
 def generate_tree(dir_path, exclude_list, prefix=""):
@@ -372,7 +381,7 @@ def should_skip_directory(dir_name, skip_folders):
     Args:
         dir_name: Name of the directory (not the full path)
         skip_folders: List of folder names to skip
-
+        
     Returns:
         bool: True if the directory should be skipped, False otherwise
     """
@@ -762,8 +771,14 @@ Examples:
     parser.add_argument('-o', '--output', default='',
                         help='Output filename (without extension)')
 
+    parser.add_argument('--output-dir', default='print_project_outputs',
+                        help='Output directory (default: print_project_outputs)')
+
+    parser.add_argument('--overwrite', action='store_true',
+                        help='Overwrite existing file instead of creating new timestamped file')
+
     parser.add_argument('--duplicate', action='store_true',
-                        help='Create duplicate output file with timestamp instead of overwriting')
+                        help='[DEPRECATED] Create duplicate output file with timestamp (now default behavior)')
 
     parser.add_argument('--no-summary', action='store_true',
                         help='Exclude summary from output file')
@@ -856,7 +871,9 @@ def load_config():
         'max_file_size': '0',
         'console': 'False',
         'no_summary': 'False',
-        'no_tree': 'False'
+        'no_tree': 'False',
+        'output_dir': 'print_project_outputs',
+        'overwrite': 'False'
     }
 
     if config_path and os.path.exists(config_path):
@@ -875,7 +892,9 @@ def load_config():
                 'max_file_size': config['DEFAULT'].get('max_file_size', defaults['max_file_size']),
                 'console': config['DEFAULT'].get('console', defaults['console']),
                 'no_summary': config['DEFAULT'].get('no_summary', defaults['no_summary']),
-                'no_tree': config['DEFAULT'].get('no_tree', defaults['no_tree'])
+                'no_tree': config['DEFAULT'].get('no_tree', defaults['no_tree']),
+                'output_dir': config['DEFAULT'].get('output_dir', defaults['output_dir']),
+                'overwrite': config['DEFAULT'].get('overwrite', defaults['overwrite'])
             }
         else:
             config_dict = defaults
@@ -955,283 +974,22 @@ def merge_options(args, config):
     options['duplicate'] = args.duplicate
     options['output'] = args.output
 
+    # Handle output directory
+    if args.output_dir != 'print_project_outputs':
+        # Command line argument provided (different from default)
+        options['output_dir'] = args.output_dir
+    else:
+        # Use config or default
+        options['output_dir'] = config.get('output_dir', 'print_project_outputs')
+        
+    # Handle overwrite flag
+    if args.overwrite:
+        options['overwrite'] = True
+    else:
+        options['overwrite'] = config.get('overwrite', 'False').lower() == 'true'
+
     return options
-
-
-
 
 
 if __name__ == "__main__":
     sys.exit(main())
-
-
-"""
-## Usage Examples & Scenarios
-
-### **Basic Usage with Tree Structure**
-```bash
-# Scan current directory with tree structure (tree uses same exclusions as file processing)
-print-project
-
-# Scan specific directory with console output
-print-project -f /path/to/project --console
-
-# Skip common directories - both file processing AND tree will exclude them
-print-project -s "tests,docs,build,node_modules"
-```
-
-### **Tree Customization**
-```bash
-# Skip tree generation entirely
-print-project --no-tree
-
-# Tree uses different exclusions than file processing
-print-project -s "tests,docs" --tree-exclude ".git,venv,__pycache__"
-# Files: excludes tests,docs directories
-# Tree: excludes .git,venv,__pycache__ directories
-
-# Show full project structure but process limited files
-print-project -s "tests,build,docs,logs,temp" --tree-exclude ".git,node_modules"
-# Tree shows more structure, file processing is more selective
-```
-
-### **File Extension Filtering (Tree Shows All)**
-```bash
-# Only Python and JavaScript files (tree shows all directories)
-print-project -e py,js,ts,jsx
-# Files: only .py, .js, .ts, .jsx files processed
-# Tree: shows complete directory structure
-
-# Exclude log and temporary files
-print-project -x log,tmp,bak,cache
-# Files: excludes these extensions
-# Tree: shows all directories
-```
-
-### **Force Include Scenarios**
-```bash
-# Include important config files that might be skipped
-print-project --include-files "config.local.properties,.env.production,secret.yaml"
-
-# Include specific test files while skipping test directories
-print-project -s tests,test --include-files "critical-test.py,integration-test.js"
-# File processing: skips test directories but includes specific test files
-# Tree: also excludes test directories from structure
-
-# Include README files that might be filtered out
-python print_project.py -e py --include-files "README.md,CHANGELOG.md"
-```
-
-### **Only Include Scenarios**
-```bash
-# Process only core application files (tree still shows structure)
-python print_project.py --only-include-files "main.py,config.py,utils.py"
-
-# Quick documentation of specific files with no tree
-python print_project.py --only-include-files "README.md,API.md,INSTALL.md" --no-tree
-
-# Focus on configuration files only
-python print_project.py --only-include-files "application.yml,database.properties,nginx.conf"
-```
-
-### **Advanced Tree + File Processing Combinations**
-```bash
-# Show clean tree but process more files
-python print_project.py -s "tests" --tree-exclude ".git,venv,node_modules,build,dist"
-
-# Minimal tree, comprehensive file processing
-python print_project.py --tree-exclude ".git,venv,node_modules,build,dist,docs,temp,logs"
-
-# Skip build directories but include important build files
-python print_project.py -s build,dist,target --include-files "Dockerfile,docker-compose.yml"
-
-# Only Python files + force include shell scripts + clean tree
-python print_project.py -e py --include-files "deploy.sh,setup.sh,run.sh" --tree-exclude ".git,venv" --console
-
-# Custom output with timestamp for archival
-python print_project.py --include-files "CRITICAL.md" -o security_audit --duplicate
-```
-
-### **Project-Specific Scenarios**
-
-#### **Python Project Analysis**
-```bash
-# Standard Python project
-python print_project.py -s "__pycache__,venv,.pytest_cache" --tree-exclude ".git,venv,__pycache__"
-
-# Django project
-python print_project.py -e py,html,css,js --tree-exclude ".git,venv,static_collected,media"
-
-# Data science project
-python print_project.py -e py,ipynb,yml --include-files "requirements.txt,environment.yml"
-```
-
-#### **JavaScript/Node.js Projects**
-```bash
-# React/Vue project
-python print_project.py -e js,jsx,ts,tsx,vue --tree-exclude ".git,node_modules,dist,build"
-
-# Full-stack project
-python print_project.py -s "node_modules,build" --tree-exclude ".git,node_modules,dist,coverage"
-
-# Include package files
-python print_project.py -e js,ts --include-files "package.json,package-lock.json,tsconfig.json"
-```
-
-#### **Java Enterprise Projects**
-```bash
-# Spring Boot project
-python print_project.py -e java,xml,yml,properties --tree-exclude ".git,target,.idea,.gradle"
-
-# Maven project
-python print_project.py -s "target,.idea" --include-files "pom.xml" --tree-exclude ".git,target"
-
-# Gradle project
-python print_project.py -s "build,.gradle" --include-files "build.gradle,gradle.properties"
-```
-
-#### **Multi-language Projects**
-```bash
-# Backend + Frontend
-python print_project.py -e py,js,ts,java,yml --tree-exclude ".git,node_modules,target,venv"
-
-# Microservices architecture
-python print_project.py -s "target,node_modules,venv" --tree-exclude ".git,build,dist"
-```
-
-### **Documentation and Analysis Workflows**
-
-#### **Code Review Preparation**
-```bash
-# Comprehensive review with clean tree structure
-python print_project.py -e py,js,ts,java --include-files "README.md,CHANGELOG.md" --tree-exclude ".git,node_modules,build"
-
-# Security-focused review
-python print_project.py --include-files ".env,.env.local,secrets.yml,config.properties" --tree-exclude ".git,node_modules"
-```
-
-#### **Documentation Generation**
-```bash
-# Only documentation files with minimal tree
-python print_project.py --only-include-files "README.md,ARCHITECTURE.md,API.md,CHANGELOG.md" --tree-exclude ".git,node_modules,build,docs/build"
-
-# Architecture documentation with structure focus
-python print_project.py --only-include-files "ARCHITECTURE.md,README.md" --tree-exclude ".git"
-```
-
-#### **AI Code Analysis Preparation**
-```bash
-# Clean codebase without tests but with structure
-python print_project.py -s tests,test --include-files "TestConfig.java,test-utils.py" --console
-
-# Core logic only with minimal tree
-python print_project.py -e py,js,java --tree-exclude ".git,tests,docs,examples,samples"
-
-# Configuration and core files
-python print_project.py -e py,yml,json --include-files "Dockerfile,docker-compose.yml"
-```
-
-#### **Project Migration/Archive**
-```bash
-# Complete project snapshot
-python print_project.py --tree-exclude ".git" -o project_snapshot --duplicate
-
-# Source code only
-python print_project.py -s "tests,docs,examples" --tree-exclude ".git,build,dist,node_modules"
-
-# Essential files for deployment
-python print_project.py --include-files "Dockerfile,docker-compose.yml,requirements.txt,package.json" -o deployment_files
-```
-
-### **Configuration-based Usage**
-
-#### **Using config.ini defaults**
-```bash
-# Uses all config.ini settings
-python print_project.py
-
-# Override only tree exclusions
-python print_project.py --tree-exclude ".git,venv"
-
-# Override only file processing exclusions
-python print_project.py -s "tests,build"
-```
-
-#### **Environment-specific configs**
-```bash
-# Development environment (show more)
-python print_project.py --tree-exclude ".git"
-
-# Production analysis (show less)
-python print_project.py -s "tests,docs,examples" --tree-exclude ".git,tests,docs,examples,temp,logs"
-```
-
-### **Debugging and Troubleshooting**
-```bash
-# See what's being excluded and why
-python print_project.py --console
-
-# Check tree vs file processing differences
-python print_project.py -s "tests" --tree-exclude ".git" --console
-
-# Minimal exclusions for debugging
-python print_project.py --tree-exclude ".git" --console
-```
-
-### **Performance Optimization**
-```bash
-# Large projects - skip tree for faster processing
-python print_project.py --no-tree -s "node_modules,build,dist"
-
-# Small projects - full analysis
-python print_project.py --tree-exclude ".git"
-
-# Specific file analysis with structure context
-python print_project.py --only-include-files "main.py,config.py" --tree-exclude ".git,venv"
-```
-
-## Error Handling & Validation
-```bash
-# This will show an error - conflicting include options
-python print_project.py --include-files "a.py" --only-include-files "b.py"
-
-# This works - different exclusions for tree vs files
-python print_project.py -s "tests,docs" --tree-exclude ".git,venv"
-
-# This works - tree follows file exclusions
-python print_project.py -s "tests,docs,build"
-```
-
-## Pro Tips
-
-### **Quick Project Assessment**
-```bash
-# See structure + key files only
-python print_project.py --only-include-files "README.md,package.json,requirements.txt"
-
-# Architecture overview
-python print_project.py --tree-exclude ".git,node_modules,build" --no-summary
-```
-
-### **Team Collaboration**
-```bash
-# Standardized project documentation
-python print_project.py -o team_review --duplicate --console
-
-# Code review package
-python print_project.py -e py,js,ts --include-files "CHANGELOG.md" -o code_review
-```
-
-### **Different Analysis Depths**
-```bash
-# Surface-level analysis
-python print_project.py --tree-exclude ".git,tests,docs,examples" -e py,js
-
-# Deep analysis
-python print_project.py --tree-exclude ".git" --include-files "test_config.py,setup.cfg"
-
-# Structure-focused
-python print_project.py --only-include-files "README.md" --tree-exclude ".git"
-```
-
-"""

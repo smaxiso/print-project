@@ -141,54 +141,6 @@ python print_project.py --console
 ### Advanced Options
 
 ```bash
-# CLI commands:
-print-project -s "tests,docs,build"              # Skip specific directories
-print-project -e py,js,ts                        # Include only specific file extensions
-print-project -x txt,log,tmp                     # Exclude specific file extensions
-print-project --include-files "config.local.properties,.env.production"  # Force include specific files
-print-project --only-include-files "main.py,config.py,README.md"          # Process only specific files
-print-project -o my_project_analysis             # Custom output filename
-print-project --duplicate                        # Create timestamped output
-print-project --no-tree                          # Skip directory tree generation
-print-project --tree-exclude ".git,venv,node_modules"  # Custom tree exclusions
-
-# Python script usage:
-python print_project.py -s "tests,docs,build"
-python print_project.py -e py,js,ts
-# (Same options available)
-```
-
-## Command Line Options
-
-| Option | Description |
-|--------|-------------|
-| `-f, --folder` | Directory to process (default: current directory) |
-| `-s, --skip` | Comma-separated list of directories to exclude |
-| `-e, --extensions` | Comma-separated list of file extensions to include |
-| `-x, --exclude-ext` | Comma-separated list of file extensions to exclude |
-| `-i, --ignore-files` | Comma-separated list of specific files to exclude |
-| `--include-files` | Force include specific files (overrides filters) |
-| `--only-include-files` | Process ONLY these specific files |
-| `--max-size` | Maximum file size in bytes to process |
-| `--console` | Show console output during processing |
-| `-o, --output` | Output filename (without extension) |
-| `--duplicate` | Create timestamped output instead of overwriting |
-| `--no-summary` | Exclude summary from output file |
-| `--no-tree` | Skip directory tree generation |
-| `--tree-exclude` | Override directory exclusions for tree generation |
-| `-h, --help` | Show help message |
-
-## Configuration
-
-The tool uses a `config.ini` file for default settings. You can customize:
-
-- Default directories to skip
-- File extensions to exclude
-- Trusted text file extensions
-- Maximum file size limits
-- Default output behavior
-
-## Output
 
 The tool generates a `.txt` file containing:
 

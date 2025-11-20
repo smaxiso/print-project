@@ -28,4 +28,5 @@ exclude .gitignore
 recursive-exclude .git *
 recursive-exclude .vscode *
 recursive-exclude output *
+recursive-exclude print_project_outputs *
 recursive-exclude print_project.egg-info *

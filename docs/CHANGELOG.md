@@ -16,6 +16,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Nothing yet
 
+## [2.1.0] - 2025-11-20
+
+### Added
+- **Custom Output Directory**: New `--output-dir` flag to specify where output files are saved.
+- **Overwrite Mode**: New `--overwrite` flag to disable timestamping and overwrite existing files.
+- **Timestamped Filenames**: Output files now include a timestamp by default (e.g., `project_name_20231027_120000.txt`) to prevent accidental data loss.
+
+### Changed
+- **Default Output Directory**: Renamed from `output/` to `print_project_outputs/` for better clarity.
+- **Default Filename Behavior**: Changed from overwriting `project_name.txt` to creating timestamped files `project_name_TIMESTAMP.txt`.
+- **Deprecated**: The `--duplicate` flag is now deprecated as timestamping is the default behavior.
+
 ## [2.0.3] - 2025-10-11
 
 ### Added

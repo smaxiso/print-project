@@ -64,6 +64,7 @@ Thumbs.db
 
 # Project specific
 output/
+print_project_outputs/
 *.txt
 !README.md
 logs/
