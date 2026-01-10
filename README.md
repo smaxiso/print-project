@@ -3,7 +3,7 @@
 [![PyPI version](https://badge.fury.io/py/print-project.svg)](https://badge.fury.io/py/print-project)
 [![Python 3.6+](https://img.shields.io/badge/python-3.6+-blue.svg)](https://www.python.org/downloads/)
 
-A comprehensive Python utility for analyzing and extracting the contents of source code files across a project directory structure, outputting them into a single organized document for easier review and analysis.
+A comprehensive Python utility for analyzing and extracting the contents of source code files across a project directory structure, outputting them into a single organized document for easier review and analysis.e
 
 ## Features
 
@@ -159,7 +159,16 @@ The tool generates a `.txt` file containing:
 
 Reverse engineer a project from the output text file. This automatically recreates the directory structure and files.
 
-**CLI Command:**
+**Option 1: Unified Command (Recommended)**
+```bash
+# Reconstruct using the main tool
+print-project --reconstruct output/myproject.txt
+
+# Reconstruct to specific directory
+print-project --reconstruct output/myproject.txt --output-dir ./workspace
+```
+
+**Option 2: Standalone Command**
 ```bash
 # Reconstruct to ./project_name/ (default behavior)
 reconstruct-project output/myproject.txt
@@ -171,7 +180,7 @@ reconstruct-project output/myproject.txt --output-dir ./workspace
 reconstruct-project output/myproject.txt --output-dir ./workspace --no-project-dir
 ```
 
-**Direct Script Usage:**
+**Option 3: Direct Script Usage**
 ```bash
 python reconstruct_project.py output/myproject.txt
 ```

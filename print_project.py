@@ -64,6 +64,71 @@ def _main():
     config = load_config()  # This now loads trusted extensions into global variable
     options = merge_options(args, config)
 
+    # Handle reconstruction mode
+    if args.reconstruct:
+        # Lazy import to avoid circular dependencies if any
+        try:
+            import reconstruct_project
+        except ImportError:
+            print("Error: reconstruct_project.py not found in the same directory.")
+            print("To use --reconstruct, both print_project.py and reconstruct_project.py must be present.")
+            return 1
+        
+        input_file = args.reconstruct
+        if not os.path.exists(input_file):
+            print(f"Error: Input file not found: {input_file}")
+            return 1
+            
+        print(f"Reconstruction Mode: Active")
+        print(f"Input File: {input_file}")
+            
+        # Parse the output file
+        try:
+            if args.console:
+                print(f"Parsing output file: {input_file}")
+            parsed_data = reconstruct_project.parse_output_file(input_file)
+            
+            project_name = parsed_data['metadata'].get('project_name', 'Unknown')
+            if args.console:
+                print(f"Found project: {project_name}")
+                print(f"Original directory: {parsed_data['metadata'].get('original_directory', 'Unknown')}")
+            
+        except Exception as e:
+            print(f"Error parsing output file: {e}")
+            return 1
+        
+        # Determine output directory
+        base_output_dir = args.output_dir if args.output_dir != 'print_project_outputs' else os.getcwd()
+        
+        # Handle --no-project-dir logic
+        if args.no_project_dir:
+            final_output_dir = base_output_dir
+        else:
+            # Default behavior: Append project name to path
+            if project_name and project_name != 'Unknown':
+                final_output_dir = os.path.join(base_output_dir, project_name)
+            else:
+                # Fallback if no project name found in metadata
+                print("Warning: No project name found in metadata. Using 'reconstructed_project'")
+                final_output_dir = os.path.join(base_output_dir, 'reconstructed_project')
+    
+        # Reconstruct the project
+        try:
+            reconstruct_project.reconstruct_project(
+                parsed_data,
+                final_output_dir,
+                overwrite=args.overwrite,
+                dry_run=args.dry_run,
+                verbose=args.console  # Map console to verbose
+            )
+            return 0
+        except Exception as e:
+            print(f"Error reconstructing project: {e}")
+            if args.console:
+                import traceback
+                traceback.print_exc()
+            return 1
+
     # Validate include options (they're mutually exclusive)
     if options['include_files'] and options['only_include_files']:
         print("Error: --include-files and --only-include-files cannot be used together")
@@ -830,6 +895,16 @@ Examples:
 
     parser.add_argument('--tree-exclude', default='',
                         help='Override: Comma-separated list of directories to exclude from tree display (if not specified, uses --skip folders)')
+
+    # Reconstruction arguments
+    parser.add_argument('--reconstruct',
+                        help='Reverse engineer a project from an output file (activates reconstruction mode)')
+
+    parser.add_argument('--no-project-dir', action='store_true',
+                        help='[Reconstruct Mode] Do not create a project-named subdirectory (recreate files directly in output-dir)')
+
+    parser.add_argument('--dry-run', action='store_true',
+                        help='[Reconstruct Mode] Show what would be created without actually creating files')
 
     return parser.parse_args()
 
