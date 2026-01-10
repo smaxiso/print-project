@@ -252,6 +252,33 @@ def is_binary_file(file_path, sample_size=8192):
         bool: True if the file appears to be binary, False otherwise.
     """
     try:
+        file_name = os.path.basename(file_path)
+        
+        # Check for common dotfile names (shell configs, editor configs, etc.)
+        # These are always text files
+        trusted_dotfiles = {
+            # Shell configs
+            '.zshrc', '.bashrc', '.bash_profile', '.bash_aliases', '.bash_logout',
+            '.profile', '.zprofile', '.zshenv', '.zlogin', '.zlogout',
+            '.mkshrc', '.kshrc', '.tcshrc', '.cshrc', '.csh.login',
+            '.fishrc', '.fish', '.fish.config', '.dashrc', '.pdkshrc',
+            # Editor configs
+            '.vimrc', '.gvimrc', '.nvimrc', '.ideavimrc', '.exrc',
+            # Git configs
+            '.gitconfig', '.gitignore', '.gitattributes', '.gitmodules',
+            # Common config files
+            '.editorconfig', '.env', '.envrc', '.env.local',
+            '.dockerignore', '.tmux.conf', '.screenrc', '.inputrc',
+            '.npmrc', '.yarnrc', '.pylintrc', '.flake8',
+            '.eslintrc', '.eslintrc.js', '.eslintrc.json', '.eslintrc.yml',
+            '.prettierrc', '.prettierignore', '.babelrc',
+            '.python-version', '.ruby-version', '.nvmrc', '.node-version',
+            '.tool-versions', '.htaccess', '.htpasswd'
+        }
+        
+        if file_name in trusted_dotfiles:
+            return False
+        
         # Use trusted extensions from config (loaded globally)
         _, ext = os.path.splitext(file_path)
         if ext.lower() in TRUSTED_EXTENSIONS:
@@ -266,7 +293,12 @@ def is_binary_file(file_path, sample_size=8192):
         confidence = result['confidence']
 
         if confidence < 0.5:
-            return True
+            # Low confidence - try UTF-8 as fallback before declaring binary
+            try:
+                content.decode('utf-8')
+                return False  # Successfully decoded as UTF-8, treat as text
+            except UnicodeDecodeError:
+                return True  # Can't decode as UTF-8 either, likely binary
 
         # Check for common binary characteristics if encoding is likely text
         if encoding:
@@ -277,12 +309,21 @@ def is_binary_file(file_path, sample_size=8192):
                 if non_ascii_count / len(text) > 0.3:
                     return True
                 return False
-            except UnicodeDecodeError:
-                # If decoding fails, it's likely a binary file
-                return True
+            except (UnicodeDecodeError, LookupError):
+                # If decoding fails with detected encoding, try UTF-8 as fallback
+                try:
+                    content.decode('utf-8')
+                    return False  # Successfully decoded as UTF-8, treat as text
+                except UnicodeDecodeError:
+                    # Can't decode with either encoding, likely binary
+                    return True
         else:
-            # If no encoding is detected, treat as binary
-            return True
+            # If no encoding is detected, try UTF-8 before declaring binary
+            try:
+                content.decode('utf-8')
+                return False  # Successfully decoded as UTF-8, treat as text
+            except UnicodeDecodeError:
+                return True  # Can't decode as UTF-8, likely binary
     except FileNotFoundError:
         print(f"File not found: {file_path}", file=sys.stderr)
         return True
