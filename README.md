@@ -10,6 +10,7 @@ A comprehensive Python utility for analyzing and extracting the contents of sour
 - **Recursive Directory Scanning**: Analyzes entire project structures including subdirectories
 - **File Type Filtering**: Include/exclude files by extension or specific filenames
 - **Smart Binary Detection**: Automatically skips binary files while allowing trusted text extensions
+- **Project Structure Recovery**: Reconstructs complete project directories from analysis files
 - **Directory Tree Generation**: Creates visual directory structure representation
 - **Configurable Output**: Customizable output formatting with summary statistics
 - **Size Limits**: Configurable maximum file size processing limits
@@ -154,11 +155,33 @@ The tool generates a `.txt` file containing:
    - Files skipped (with reasons)
    - Processing time and performance metrics
 
+### 🔄 Project Reconstruction
+
+Reverse engineer a project from the output text file. This automatically recreates the directory structure and files.
+
+**CLI Command:**
+```bash
+# Reconstruct to ./project_name/ (default behavior)
+reconstruct-project output/myproject.txt
+
+# Reconstruct deep inside another directory
+reconstruct-project output/myproject.txt --output-dir ./workspace
+
+# Reconstruct flat (no project folder)
+reconstruct-project output/myproject.txt --output-dir ./workspace --no-project-dir
+```
+
+**Direct Script Usage:**
+```bash
+python reconstruct_project.py output/myproject.txt
+```
+
 ## Project Structure
 
 ```
 print-project/
 ├── print_project.py           # Main application
+├── reconstruct_project.py     # Reconstruction tool
 ├── config/
 │   └── config.ini            # Default configuration
 ├── scripts/
