@@ -11,6 +11,7 @@ requires-python = ">=3.6"
 authors = [
     {name = "smaxiso", email = "smaxiso@users.noreply.github.com"}
 ]
+license = {text = "MIT License"}
 
 keywords = ["code-analysis", "directory-scanner", "documentation", "source-code", "project-analysis"]
 classifiers = [
