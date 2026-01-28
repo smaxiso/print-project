@@ -47,92 +47,87 @@ from pathlib import Path
 
 def parse_output_file(file_path):
     """
-    Parse the output file and extract project structure and file contents.
-    
-    Args:
-        file_path: Path to the output text file
-        
-    Returns:
-        dict: Dictionary with 'metadata' and 'files' (list of {path, content})
+    Robustly parse the output file by splitting on file headers 
+    instead of relying on non-greedy regex matching.
     """
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
     except UnicodeDecodeError:
-        # Fallback for systems with different default encodings
         with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
             content = f.read()
-    
-    # Extract metadata - Scans for keys individually for robustness
+
+    # Extract metadata
     metadata = {}
-    
     project_match = re.search(r'^# Project: (.+)$', content, re.MULTILINE)
-    if project_match:
-        metadata['project_name'] = project_match.group(1).strip()
-        
-    date_match = re.search(r'^# Date: (.+)$', content, re.MULTILINE)
-    if date_match:
-        metadata['date'] = date_match.group(1).strip()
-        
+    if project_match: metadata['project_name'] = project_match.group(1).strip()
+    
     dir_match = re.search(r'^# Directory: (.+)$', content, re.MULTILINE)
-    if dir_match:
-        metadata['original_directory'] = dir_match.group(1).strip()
+    if dir_match: metadata['original_directory'] = dir_match.group(1).strip()
     
-    # Find the FILE CONTENTS section
-    # Logic: If tree exists, content is after "FILE CONTENTS". 
-    # If no tree, content starts at the first file marker.
+    date_match = re.search(r'^# Date: (.+)$', content, re.MULTILINE)
+    if date_match: metadata['date'] = date_match.group(1).strip()
+
+    # Find where the FILE CONTENTS section begins
     file_contents_start = content.find('FILE CONTENTS')
-    
-    if file_contents_start != -1:
-        # Tree section exists, start searching after it
-        file_section = content[file_contents_start:]
-    else:
-        # No tree section, find first file marker to ensure we skip header
-        # Look for "=== something ===" followed immediately by "```"
-        first_file_match = re.search(r'^=== .+ ===\n```', content, re.MULTILINE)
+    if file_contents_start == -1:
+        # Fallback for outputs without the explicit FILE CONTENTS header
+        # Just start searching, but we need to be careful not to match headers in the metadata section
+        # Assuming metadata is at top, we can likely just start from beginning or use a heuristic
+        # For now, let's assume the user provided logic or try to find first file header
+        first_file_match = re.search(r'\n=== (.+?) ===\n```', content)
         if first_file_match:
-            file_section = content[first_file_match.start():]
+             file_contents_start = first_file_match.start()
         else:
             raise ValueError("Could not find any file content blocks (=== path ===) in the output file.")
+
+    # Split the content section by the file header pattern
+    # We look for: newline + === path === + newline + ```
+    raw_data = content[file_contents_start:]
     
-    # Pattern to match file blocks: === path === followed by code block
-    # Capture group 1: File Path
-    # Capture group 2: Content inside ``` ... ```
-    file_pattern = r'=== (.+?) ===\n```\n(.*?)```'
+    # This regex finds the headers to split on
+    header_pattern = re.compile(r'\n=== (.+?) ===\n```')
     
     files = []
-    for match in re.finditer(file_pattern, file_section, re.DOTALL):
-        file_path = match.group(1).strip()
-        raw_content = match.group(2)
+    
+    # Split the string by headers. 
+    # Result[0] is garbage before first file.
+    # Result[1] is filename, Result[2] is content, Result[3] is filename...
+    parts = header_pattern.split(raw_data)
+    
+    # Iterate over the parts in pairs (filename, content)
+    # We skip parts[0] because it's the text before the first file header
+    for i in range(1, len(parts), 2):
+        file_path = parts[i].strip()
+        raw_content = parts[i+1]
+
+        # The raw_content will contain the file text PLUS the closing ``` 
+        # and potentially some newlines before the next header. 
+        # We need to strip the trailing ``` that closes the file block.
         
-        # Process lines to remove line numbers
+        # Remove the very last occurrence of ``` (and any trailing whitespace/newlines around it)
+        raw_content = re.sub(r'\n```\s*$', '', raw_content)
+
         lines = raw_content.split('\n')
         cleaned_lines = []
-        
+
         for line in lines:
-            # Match pattern: optional spaces + number + " | " + content
-            # This handles "   1 | import os" or "1023 | code"
+            # Strip the line numbers (e.g., "  1 | ")
+            # Be careful not to strip internal code that might look like line numbers
+            # We strictly look for "  123 | " at the START of the line
             line_match = re.match(r'^\s*\d+\s+\|\s?(.*)$', line)
             if line_match:
                 cleaned_lines.append(line_match.group(1))
             else:
-                # Keep lines that don't match the numbering pattern (empty lines or raw content)
-                # This ensures we don't lose data if the format is slightly off
+                # If a line doesn't have a number (e.g. empty lines inside a file), keep it
                 cleaned_lines.append(line)
-        
-        # Handle edge case where last line might be an artifact of split
-        if cleaned_lines and cleaned_lines[-1] == "":
-             # Check if the original raw content ended with a newline
-             if not raw_content.endswith('\n'):
-                 cleaned_lines.pop()
 
-        file_text = '\n'.join(cleaned_lines)
-        
+        # Reassemble
         files.append({
             'path': file_path,
-            'content': file_text
+            'content': '\n'.join(cleaned_lines)
         })
-    
+
     return {
         'metadata': metadata,
         'files': files

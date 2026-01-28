@@ -26,7 +26,7 @@ Install directly from PyPI - works on **any system** with Python:
 pip install print-project
 ```
 
-> **Latest Release**: v2.2.1 (January 2026) - [View on PyPI](https://pypi.org/project/print-project/)
+> **Latest Release**: v2.2.2 (January 2026) - [View on PyPI](https://pypi.org/project/print-project/)
 
 **✅ After installation, use from any directory:**
 ```bash
