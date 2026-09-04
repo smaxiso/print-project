@@ -369,9 +369,13 @@ def is_binary_file(file_path, sample_size=8192):
         if encoding:
             try:
                 text = content.decode(encoding)
-                # If decoding succeeds, check for an unusually high proportion of non-ASCII characters
-                non_ascii_count = sum(1 for char in text if ord(char) > 127)
-                if non_ascii_count / len(text) > 0.3:
+                # If decoding succeeds, check for control characters that indicate binary data.
+                # We look for null bytes and non-whitespace control chars (0x00-0x08, 0x0E-0x1F).
+                # NOTE: We do NOT check for non-ASCII characters, because valid text in
+                # non-Latin scripts (Hindi/Devanagari, Chinese, Japanese, Korean, Arabic,
+                # etc.) is almost entirely non-ASCII and would be falsely flagged as binary.
+                control_chars = sum(1 for char in text if (ord(char) < 0x09) or (0x0E <= ord(char) <= 0x1F))
+                if len(text) > 0 and control_chars / len(text) > 0.1:
                     return True
                 return False
             except (UnicodeDecodeError, LookupError):

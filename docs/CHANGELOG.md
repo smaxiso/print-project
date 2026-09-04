@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Nothing yet
 
+## [2.2.3] - 2026-09-05
+
+### Fixed
+- **Non-Latin Script Support**: Fixed binary detection incorrectly classifying Hindi (Devanagari), Chinese, Japanese, Korean, Arabic, and other non-Latin script files as binary. The old heuristic rejected files with >30% non-ASCII characters, which is always true for non-Latin text. Replaced with a control-character check (0x00–0x08, 0x0E–0x1F) that correctly identifies actual binary data without penalizing Unicode text.
+
 ## [2.1.0] - 2025-11-20
 
 ### Added
